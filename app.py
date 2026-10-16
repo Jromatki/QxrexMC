@@ -1,5 +1,6 @@
 
-from flask import Flask, request, render_template_string
+from flask import Flask, request, jsonify, render_template_string
+import os
 
 app = Flask(__name__)
 
@@ -14,9 +15,7 @@ HTML = """
 <title>Một điều muốn nói 💗</title>
 
 <style>
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
@@ -51,16 +50,13 @@ body {
     z-index: 0;
 }
 
-.heart:nth-child(1) { left: 8%; }
-.heart:nth-child(2) { left: 25%; animation-delay: 2s; }
-.heart:nth-child(3) { left: 75%; animation-delay: 1s; }
-.heart:nth-child(4) { left: 90%; animation-delay: 3s; }
+.heart:nth-of-type(1) { left: 8%; }
+.heart:nth-of-type(2) { left: 25%; animation-delay: 2s; }
+.heart:nth-of-type(3) { left: 75%; animation-delay: 1s; }
+.heart:nth-of-type(4) { left: 90%; animation-delay: 3s; }
 
 @keyframes float {
-    0% {
-        transform: translateY(0);
-        opacity: 0;
-    }
+    0% { transform: translateY(0); opacity: 0; }
     15% { opacity: 1; }
     100% {
         transform: translateY(-115vh) rotate(35deg);
@@ -74,7 +70,7 @@ body {
     width: min(100%, 430px);
     padding: 35px 28px;
     text-align: center;
-    background: rgba(255, 255, 255, .82);
+    background: rgba(255,255,255,.82);
     border: 2px solid white;
     border-radius: 30px;
     box-shadow: 0 20px 60px #c17eae40;
@@ -83,14 +79,8 @@ body {
 }
 
 @keyframes appear {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(.96);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    from { opacity: 0; transform: translateY(20px) scale(.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .bunny {
@@ -127,9 +117,7 @@ input {
     outline: none;
 }
 
-input:focus {
-    border-color: #ee8cbd;
-}
+input:focus { border-color: #ee8cbd; }
 
 button {
     border: none;
@@ -144,9 +132,7 @@ button {
     transition: .25s;
 }
 
-button:hover {
-    transform: translateY(-3px) scale(1.02);
-}
+button:hover { transform: translateY(-3px) scale(1.02); }
 
 .full-button {
     width: 100%;
@@ -159,9 +145,7 @@ button:hover {
     margin-top: 20px;
 }
 
-.choices button {
-    flex: 1;
-}
+.choices button { flex: 1; }
 
 .no-button {
     background: linear-gradient(100deg, #a6a6b8, #818ba8);
@@ -229,6 +213,15 @@ button:hover {
     border-radius: 20px;
 }
 
+.music-status {
+    position: fixed;
+    bottom: 15px;
+    left: 15px;
+    z-index: 100;
+    color: #884c78;
+    font-size: 12px;
+}
+
 @media (max-width: 420px) {
     .card { padding: 28px 20px; }
     .choices { flex-direction: column; }
@@ -245,87 +238,26 @@ button:hover {
 <span class="heart">✨</span>
 <span class="heart">💖</span>
 
-<main class="card">
-
-{% if page == "love" %}
-
-    <div class="bunny">💌</div>
-    <h1>Tui có điều muốn nói...</h1>
-    <p class="subtitle">Tui đã lấy hết can đảm rồi đó 🥺</p>
-
-    <section class="love-note">
-        <div class="big-heart">💖</div>
-        <p class="love-text">
-            Tui thích bạn,<br>
-            bạn làm người yêu tui nha!
-        </p>
-        <p>Hy vọng chúng ta có thật nhiều kỷ niệm đẹp ♡</p>
-    </section>
-
-    <p class="footer">Một chiếc thư tình dành riêng cho bạn 🎀</p>
-
-{% elif page == "sad" %}
-
-    <div class="sad-emoji">🥺</div>
-    <h1>À... tui hiểu rồi</h1>
-
-    <section class="sad-note">
-        <p class="sad-text">Xin lỗi vì đã làm phiền :(</p>
-        <p style="color:#a5a1b5">Chúc bạn luôn vui vẻ nhé...</p>
-        <div style="font-size:35px">🥀💧</div>
-    </section>
-
-    <p class="footer">Mong mọi điều tốt đẹp sẽ đến với bạn.</p>
-
-{% elif page == "question" %}
-
-    <div class="bunny">🐰</div>
-    <h1>Tui hỏi cái này nha...</h1>
-    <p class="subtitle">Bạn trả lời thật lòng cho tui biết với 🥺</p>
-
-    <section class="question-box">
-        <div class="question">Bạn có thích tui hong? 💗</div>
-        <div style="font-size:42px">૮ ˶ᵔ ᵕ ᵔ˶ ა</div>
-
-        <form method="POST" class="choices">
-            <button name="answer" value="yes" type="submit">
-                Có chứ 💖
-            </button>
-
-            <button name="answer" value="no" type="submit"
-                    class="no-button">
-                Không nhé 😢
-            </button>
-        </form>
-    </section>
-
-{% else %}
-
+<main class="card" id="card">
     <div class="bunny">🐰</div>
     <h1>Chào bạn đáng yêu! 💗</h1>
-
     <p class="subtitle">
         Tui có một món quà bí mật dành cho bạn.
         Nhập mật khẩu để mở nha! ✨
     </p>
 
-    <form method="POST">
+    <form id="passwordForm">
         <input type="password" name="password"
                placeholder="🔒 Nhập mật khẩu..." required>
         <button class="full-button" type="submit">Mở bí mật ♡</button>
+        <p id="errorMessage" style="color:#d84e79"></p>
     </form>
 
-    {% if error %}
-        <p style="color:#d84e79">{{ error }}</p>
-    {% endif %}
-
     <p class="footer">Được gói ghém bằng một chút dễ thương 🎀</p>
-
-{% endif %}
-
 </main>
 
-<audio id="backgroundMusic" loop preload="auto">
+<!-- Trình phát duy nhất, nằm ngoài phần nội dung thay đổi -->
+<audio id="backgroundMusic" autoplay loop preload="auto">
     <source src="{{ url_for('static', filename='music.mp3') }}"
             type="audio/mpeg">
 </audio>
@@ -335,6 +267,7 @@ button:hover {
 </button>
 
 <script>
+const card = document.getElementById("card");
 const music = document.getElementById("backgroundMusic");
 const musicButton = document.getElementById("musicButton");
 
@@ -345,13 +278,142 @@ async function playMusic() {
     } catch (error) {
         musicButton.hidden = false;
         musicButton.textContent = "🎵 Bấm để bật nhạc";
-        console.log("Trình duyệt chưa cho phép tự phát nhạc.");
     }
 }
 
+musicButton.addEventListener("click", playMusic);
+
+// Thử tự phát khi mở website
 window.addEventListener("load", playMusic);
 
-musicButton.addEventListener("click", playMusic);
+
+// Nội dung câu hỏi
+function showQuestion() {
+    card.innerHTML = `
+        <div class="bunny">🐰</div>
+        <h1>Tui hỏi cái này nha...</h1>
+        <p class="subtitle">
+            Bạn trả lời thật lòng cho tui biết với 🥺
+        </p>
+
+        <section class="question-box">
+            <div class="question">Bạn có thích tui hong? 💗</div>
+            <div style="font-size:42px">૮ ˶ᵔ ᵕ ᵔ˶ ა</div>
+
+            <form id="answerForm" class="choices">
+                <button name="answer" value="yes" type="submit">
+                    Có chứ 💖
+                </button>
+                <button name="answer" value="no"
+                        type="submit" class="no-button">
+                    Không nhé 😢
+                </button>
+            </form>
+        </section>
+    `;
+}
+
+
+// Nội dung khi chọn Có
+function showLove() {
+    card.innerHTML = `
+        <div class="bunny">💌</div>
+        <h1>Tui có điều muốn nói...</h1>
+        <p class="subtitle">Tui đã lấy hết can đảm rồi đó 🥺</p>
+
+        <section class="love-note">
+            <div class="big-heart">💖</div>
+            <p class="love-text">
+                Tui thích bạn,<br>
+                bạn làm người yêu tui nha!
+            </p>
+            <p>Hy vọng chúng ta có thật nhiều kỷ niệm đẹp ♡</p>
+        </section>
+
+        <p class="footer">Một chiếc thư tình dành riêng cho bạn 🎀</p>
+    `;
+}
+
+
+// Nội dung khi chọn Không
+function showSad() {
+    card.innerHTML = `
+        <div class="sad-emoji">🥺</div>
+        <h1>À... tui hiểu rồi</h1>
+
+        <section class="sad-note">
+            <p class="sad-text">Xin lỗi vì đã làm phiền :(</p>
+            <p style="color:#a5a1b5">
+                Chúc bạn luôn vui vẻ nhé...
+            </p>
+            <div style="font-size:35px">🥀💧</div>
+        </section>
+
+        <p class="footer">
+            Mong mọi điều tốt đẹp sẽ đến với bạn.
+        </p>
+    `;
+}
+
+
+// Xử lý form mà không tải lại trang
+card.addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const form = event.target;
+
+    if (form.id === "passwordForm") {
+        const password = form.querySelector(
+            'input[name="password"]'
+        ).value;
+
+        try {
+            const response = await fetch("/check-password", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({password: password})
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showQuestion();
+            } else {
+                document.getElementById("errorMessage").textContent =
+                    "Mật khẩu chưa đúng rồi, thử lại nha!";
+            }
+        } catch (error) {
+            document.getElementById("errorMessage").textContent =
+                "Có lỗi kết nối, bạn thử lại nhé!";
+        }
+    }
+
+    else if (form.id === "answerForm") {
+        const answer = event.submitter.value;
+
+        try {
+            const response = await fetch("/answer", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({answer: answer})
+            });
+
+            const data = await response.json();
+
+            if (data.page === "love") {
+                showLove();
+            } else if (data.page === "sad") {
+                showSad();
+            }
+        } catch (error) {
+            alert("Có lỗi xảy ra. Vui lòng thử lại!");
+        }
+    }
+});
 </script>
 
 </body>
@@ -359,34 +421,36 @@ musicButton.addEventListener("click", playMusic);
 """
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def home():
-    page = "password"
-    error = None
+    return render_template_string(HTML)
 
-    if request.method == "POST":
-        if "password" in request.form:
-            if request.form.get("password") == PASSWORD:
-                page = "question"
-            else:
-                error = "Mật khẩu chưa đúng rồi, thử lại nha!"
 
-        elif request.form.get("answer") == "yes":
-            page = "love"
+@app.route("/check-password", methods=["POST"])
+def check_password():
+    data = request.get_json(silent=True) or {}
+    entered_password = data.get("password", "")
 
-        elif request.form.get("answer") == "no":
-            page = "sad"
+    return jsonify({
+        "success": entered_password == PASSWORD
+    })
 
-    return render_template_string(
-        HTML,
-        page=page,
-        error=error
-    )
+
+@app.route("/answer", methods=["POST"])
+def answer():
+    data = request.get_json(silent=True) or {}
+    choice = data.get("answer")
+
+    if choice == "yes":
+        return jsonify({"page": "love"})
+
+    if choice == "no":
+        return jsonify({"page": "sad"})
+
+    return jsonify({"error": "Lựa chọn không hợp lệ"}), 400
 
 
 if __name__ == "__main__":
-    import os
-
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 2009)),
